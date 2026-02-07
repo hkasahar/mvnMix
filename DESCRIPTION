@@ -1,22 +1,40 @@
 Package: mvnMix
 Type: Package
 Title: Modified EM Test and Estimation for Multivariate Normal Mixtures
-Version: 0.2.0
+Version: 0.2.2
 Authors@R: c(
-    person("Hiroyuki", "Kasahara", role = c("aut", "cre"),
+    person(given = "Hiroyuki", family = "Kasahara", role = c("aut", "cre"),
            email = "hkasahar@mail.ubc.ca"),
-    person("Katsumi", "Shimotsu", role = "aut"),
-    person("Seojeong", "Ahn", role = "ctb"))
+    person(given = "Katsumi", family = "Shimotsu", role = "aut"),
+    person(given = "Seojeong", family = "Ahn", role = "ctb")
+    )
+Author: Hiroyuki Kasahara [aut, cre],
+  Katsumi Shimotsu [aut],
+  Seojeong Ahn [ctb]
+Maintainer: Hiroyuki Kasahara <hkasahar@mail.ubc.ca>
 Description: Estimation and testing for finite mixtures of multivariate
     normal distributions. Implements the penalized maximum likelihood
     estimator (PMLE) and the modified EM test of Kasahara and Shimotsu
     for testing the number of components.
 License: GPL (>= 2)
 Encoding: UTF-8
-Depends: R (>= 4.0.0), mixtools
+Depends:
+    R (>= 4.1.0)
 Imports:
-    Rcpp (>= 1.0.0),
-    RcppArmadillo (>= 0.12.0.0.0),
-    parallel
-LinkingTo: Rcpp, RcppArmadillo
-RoxygenNote: 6.0.1
+    mvtnorm,
+    parallel,
+    Rcpp (>= 1.0.0)
+Suggests:
+    knitr,
+    pkgdown,
+    rmarkdown,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+LinkingTo:
+    Rcpp,
+    RcppArmadillo
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Config/testthat/edition: 3
+URL: https://github.com/kshimotsu/mvnMix
+BugReports: https://github.com/kshimotsu/mvnMix/issues

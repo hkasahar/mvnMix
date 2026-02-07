@@ -11,6 +11,29 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// cppConeProjectBatch
+arma::mat cppConeProjectBatch(arma::mat u, arma::mat I_lam_eta, int m, int d, arma::imat perm12_flat, arma::ivec perm12_offsets, arma::imat perm22_flat, arma::ivec perm22_offsets, arma::vec mc4_vec, arma::imat tup4, arma::mat init_grid, int d_muv, int d_mu4);
+RcppExport SEXP _mvnMix_cppConeProjectBatch(SEXP uSEXP, SEXP I_lam_etaSEXP, SEXP mSEXP, SEXP dSEXP, SEXP perm12_flatSEXP, SEXP perm12_offsetsSEXP, SEXP perm22_flatSEXP, SEXP perm22_offsetsSEXP, SEXP mc4_vecSEXP, SEXP tup4SEXP, SEXP init_gridSEXP, SEXP d_muvSEXP, SEXP d_mu4SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type u(uSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type I_lam_eta(I_lam_etaSEXP);
+    Rcpp::traits::input_parameter< int >::type m(mSEXP);
+    Rcpp::traits::input_parameter< int >::type d(dSEXP);
+    Rcpp::traits::input_parameter< arma::imat >::type perm12_flat(perm12_flatSEXP);
+    Rcpp::traits::input_parameter< arma::ivec >::type perm12_offsets(perm12_offsetsSEXP);
+    Rcpp::traits::input_parameter< arma::imat >::type perm22_flat(perm22_flatSEXP);
+    Rcpp::traits::input_parameter< arma::ivec >::type perm22_offsets(perm22_offsetsSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type mc4_vec(mc4_vecSEXP);
+    Rcpp::traits::input_parameter< arma::imat >::type tup4(tup4SEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type init_grid(init_gridSEXP);
+    Rcpp::traits::input_parameter< int >::type d_muv(d_muvSEXP);
+    Rcpp::traits::input_parameter< int >::type d_mu4(d_mu4SEXP);
+    rcpp_result_gen = Rcpp::wrap(cppConeProjectBatch(u, I_lam_eta, m, d, perm12_flat, perm12_offsets, perm22_flat, perm22_offsets, mc4_vec, tup4, init_grid, d_muv, d_mu4));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cppMVNmixPMLE
 List cppMVNmixPMLE(NumericMatrix bs, NumericMatrix ys, NumericVector mu0s, NumericVector sigma0s, int m, double an, int maxit, int ninits, double tol, double tau, int h, int k);
 RcppExport SEXP _mvnMix_cppMVNmixPMLE(SEXP bsSEXP, SEXP ysSEXP, SEXP mu0sSEXP, SEXP sigma0sSEXP, SEXP mSEXP, SEXP anSEXP, SEXP maxitSEXP, SEXP ninitsSEXP, SEXP tolSEXP, SEXP tauSEXP, SEXP hSEXP, SEXP kSEXP) {
@@ -35,6 +58,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_mvnMix_cppConeProjectBatch", (DL_FUNC) &_mvnMix_cppConeProjectBatch, 13},
     {"_mvnMix_cppMVNmixPMLE", (DL_FUNC) &_mvnMix_cppMVNmixPMLE, 12},
     {NULL, NULL, 0}
 };

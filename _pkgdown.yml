@@ -1,0 +1,22 @@
+template:
+  bootstrap: 5
+
+home:
+  title: mvnMix
+  description: Modified EM test and PMLE for multivariate normal mixtures
+
+reference:
+  - title: Estimation
+    contents:
+      - mvnmixPMLE
+      - mvnmixPMLEinit
+  - title: Testing
+    contents:
+      - mvnmixMEMtest
+      - mvnmixCrit
+      - mvnmixCritBoot
+  - title: Utilities
+    contents:
+      - rmvnmix
+      - sigmavec2mat
+      - cppMVNmixPMLE

@@ -1,0 +1,69 @@
+\documentclass{article}
+\usepackage{amsmath}
+
+\title{Replication-Style Example: EM Test for Multivariate Normal Mixtures}
+\author{mvnMix}
+
+%\VignetteIndexEntry{Replication-Style Example: EM Test for Multivariate Normal Mixtures}
+%\VignetteEngine{knitr::knitr}
+%\VignetteEncoding{UTF-8}
+
+\begin{document}
+\maketitle
+
+This vignette reproduces a compact simulation-style workflow aligned with
+Kasahara and Shimotsu (2025): estimate a null-order model and run the modified
+EM test for one additional mixture component.
+
+<<setup, include=FALSE>>=
+set.seed(202502)
+library(mvnMix)
+@
+
+\section*{Data Generation}
+
+<<data-gen>>=
+d <- 2
+n <- 300
+alpha <- c(0.7, 0.3)
+mu <- cbind(c(0, 0), c(2, 1))
+
+sigma1 <- diag(c(1.0, 0.7))
+sigma2 <- matrix(c(1.2, 0.4, 0.4, 1.0), nrow = 2)
+sigma <- cbind(sigma1, sigma2)
+
+y <- rmvnmix(n = n, alpha = alpha, mu = mu, sigma = sigma)
+head(y)
+@
+
+\section*{PMLE under the Null Order}
+
+<<pmle-fit>>=
+fit_m1 <- mvnmixPMLE(y = y, m = 1, ninits = 10)
+fit_m1$loglik
+fit_m1$aic
+fit_m1$bic
+@
+
+\section*{Modified EM Test}
+
+<<mem-test>>=
+em_out <- mvnmixMEMtest(
+  y = y,
+  m = 1,
+  ninits = 10,
+  tauset = c(0.1, 0.3, 0.5),
+  crit.method = "asy",
+  nrep = 1000,
+  ninits.crit = 10
+)
+
+em_out$emstat
+em_out$pvals
+em_out$crit
+@
+
+The output reports statistics at the three MEM iterations (\(k = 1,2,3\)),
+with asymptotic p-values and critical values.
+
+\end{document}

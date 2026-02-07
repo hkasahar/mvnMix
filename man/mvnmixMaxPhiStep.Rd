@@ -4,8 +4,19 @@
 \alias{mvnmixMaxPhiStep}
 \title{mvnmixMaxPhiStep}
 \usage{
-mvnmixMaxPhiStep(htaupair, y, parlist, an, ninits, ninits.short, epsilon.short,
-  epsilon, maxit.short, maxit, verb)
+mvnmixMaxPhiStep(
+  htaupair,
+  y,
+  parlist,
+  an,
+  ninits,
+  ninits.short,
+  epsilon.short,
+  epsilon,
+  maxit.short,
+  maxit,
+  verb
+)
 }
 \arguments{
 \item{htaupair}{A set of h and tau}
@@ -36,7 +47,9 @@ sigma = (vech(sigma_1)',...,vech(sigma_m)')}
 A list of phi, log-likelihood, and penalized log-likelihood resulting from MEM algorithm.
 }
 \description{
-Given a pair of h and tau and data, compute ordinary &
-penalized log-likelihood ratio resulting from MEM algorithm at k=1,2,3,
-tailored for parallelization.
+Given a pair of h and tau and data, compute ordinary and
+penalized log-likelihood values from MEM at k = 1, 2, 3.
+}
+\details{
+Compute One (h, tau) Step for Max-Phi
 }

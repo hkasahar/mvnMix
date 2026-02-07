@@ -20,12 +20,12 @@ mu = (mu_1',...,mu_m'), sigma = (vech(sigma_1)',...,vech(sigma_m)')}
 \item{ninits}{number of initial values to be generated}
 }
 \value{
-A list with the following items:
-\item{alpha}{m+1 by ninits matrix for alpha}
-\item{mu}{d*(m+1) by ninits matrix for mu}
-\item{sigma}{d*(d+1)/2*(m+1) by ninits matrix for sigma}
+A list with elements \code{alpha}, \code{mu}, and \code{sigma}.
 }
 \description{
-Generates lists of parameters for initial candidates used by
-the modified EM test for mixture of multivariate normals.
+Generates parameter candidates used by the modified EM test for
+mixtures of multivariate normals.
+}
+\details{
+Generate Initial Phi Candidates for MEM
 }

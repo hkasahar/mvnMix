@@ -7,17 +7,17 @@
 sigmavec2mat(sigma.vec, d)
 }
 \arguments{
-\item{n}{The number of observations}
+\item{sigma.vec}{Numeric vector of length \eqn{d(d+1)/2}.}
 
-\item{alpha}{m by 1 vector that represents proportions of components}
-
-\item{mu}{d by m matrix that represents mu}
-
-\item{sigma}{d by d*m matrix that represents variance of components}
+\item{d}{Matrix dimension.}
 }
 \value{
-n by d vector
+A \eqn{d \times d} symmetric matrix.
 }
 \description{
-Convert sigma vector to matrix
+Convert a lower-triangular half-vectorization
+(vech order) into a symmetric covariance matrix.
+}
+\details{
+Convert Half-Vectorized Covariance to Matrix
 }
