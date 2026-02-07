@@ -1,2 +1,11 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.git$
+^\.github$
+^\.rlib$
+^\.\.Rcheck$
+^experiments_old$
+^_pkgdown\.yml$
+^src/.*\.(o|so|dylib)$
+^\.github$
+^docs$

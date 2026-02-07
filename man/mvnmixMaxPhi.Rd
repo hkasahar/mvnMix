@@ -4,9 +4,20 @@
 \alias{mvnmixMaxPhi}
 \title{mvnmixMaxPhi}
 \usage{
-mvnmixMaxPhi(y, parlist, an, tauset = c(0.1, 0.3, 0.5), ninits = 10,
-  epsilon.short = 0.01, epsilon = 1e-08, maxit.short = 500,
-  maxit = 2000, verb = FALSE, parallel = 0.75, cl = NULL)
+mvnmixMaxPhi(
+  y,
+  parlist,
+  an,
+  tauset = c(0.1, 0.3, 0.5),
+  ninits = 10,
+  epsilon.short = 0.01,
+  epsilon = 1e-08,
+  maxit.short = 500,
+  maxit = 2000,
+  verb = FALSE,
+  parallel = 0.75,
+  cl = NULL
+)
 }
 \arguments{
 \item{y}{n by d matrix of data}
@@ -31,17 +42,18 @@ sigma = (vech(sigma_1)',...,vech(sigma_m)')}
 
 \item{verb}{Determines whether to print a message if an error occurs.}
 
-\item{parallel}{Determines what percentage of available cores are used, represented by a double in [0,1]. 0.75 is default.}
+\item{parallel}{Determines what percentage of available cores are used,
+represented by a number between 0 and 1.}
 
-\item{cl}{Cluster used for parallelization; if it is \code{NULL}, the system will automatically
-create a new one for computation accordingly.}
+\item{cl}{Cluster used for parallelization; if it is \code{NULL}, the system will automatically create a new one for computation accordingly.}
 }
 \value{
-A list with items:
-\item{loglik}{Log-likelihood resulting from MEM algorithm at k=1,2,3.}
-\item{penloglik}{Penalized log-likelihood resulting from MEM algorithm at k=1,2,3.}
+A list with \code{loglik}, \code{penloglik}, and \code{coefficient}.
 }
 \description{
-Compute ordinary & penalized log-likelihood ratio resulting from
-MEM algorithm at k=1,2,3.
+Compute ordinary and penalized log-likelihood values from the
+MEM algorithm at k = 1, 2, 3.
+}
+\details{
+Compute the Max-Phi Objective for MEM Steps
 }

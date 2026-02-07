@@ -1,45 +1,44 @@
-#' @description Generates multivariate mixed normal random variables
+#' Generate Random Draws from a Multivariate Normal Mixture
+#'
+#' @description Draw random observations from a finite mixture of multivariate
+#' normal components.
 #' @export
 #' @title rmvnmix
 #' @name rmvnmix
-#' @param n The number of observations
-#' @param alpha m by 1 vector that represents proportions of components
-#' @param mu d by m matrix that represents mu
-#' @param sigma d by d*m matrix that represents variance of components
-#' @return n by d vector
-rmvnmix <- function(n, alpha, mu, sigma){
+#' @param n Number of observations.
+#' @param alpha Length-\eqn{m} vector of component probabilities.
+#' @param mu \eqn{d \times m} matrix whose \eqn{j}-th column is component mean.
+#' @param sigma \eqn{d \times (d m)} block matrix of component covariance matrices.
+#' @return An \eqn{n \times d} matrix of random draws.
+rmvnmix <- function(n, alpha, mu, sigma) {
   m <- length(alpha)
   d <- nrow(mu)
-  Ind <- sample((1:m), n, replace=TRUE, prob=alpha)
-  y <- matrix(0, nrow=n, ncol=d)
+  ind <- sample.int(m, size = n, replace = TRUE, prob = alpha)
+  y <- matrix(0, nrow = n, ncol = d)
 
-  for (j in (1:m)){
-    nj <- sum(Ind==j)
-    muj <- mu[,j]
-    sigmaj <- sigma[,(d*(j-1)+1):(d*j)]
-    yj <- rmvnorm(nj, mu = muj, sigma = sigmaj)
-    y[Ind==j,] <- yj
+  for (j in seq_len(m)) {
+    nj <- sum(ind == j)
+    if (nj == 0L) {
+      next
+    }
+    muj <- mu[, j]
+    sigmaj <- sigma[, ((j - 1L) * d + 1L):(j * d), drop = FALSE]
+    y[ind == j, ] <- mvtnorm::rmvnorm(nj, mean = muj, sigma = sigmaj)
   }
-y
 
+  y
 }
 
-#' @description Convert sigma vector to matrix
+#' Convert Half-Vectorized Covariance to Matrix
+#'
+#' @description Convert a lower-triangular half-vectorization
+#' (vech order) into a symmetric covariance matrix.
 #' @export
 #' @title sigmavec2mat
 #' @name sigmavec2mat
-#' @param n The number of observations
-#' @param alpha m by 1 vector that represents proportions of components
-#' @param mu d by m matrix that represents mu
-#' @param sigma d by d*m matrix that represents variance of components
-#' @return n by d vector
-sigmavec2mat <- function(sigma.vec, d){
-# sigma.vec is a vector of length d(d+1)/2
-  sigma <- diag(d)
-  sigma[lower.tri(sigma, diag=TRUE)] <- sigma.vec
-  sigma <- t(sigma) + sigma
-  diag(sigma) <- diag(sigma)/2
-  sigma
-} # end function sigmavec2mat
-
-
+#' @param sigma.vec Numeric vector of length \eqn{d(d+1)/2}.
+#' @param d Matrix dimension.
+#' @return A \eqn{d \times d} symmetric matrix.
+sigmavec2mat <- function(sigma.vec, d) {
+  mvn_sigma_vech_to_mat(sigma_vec = sigma.vec, d = d)
+}

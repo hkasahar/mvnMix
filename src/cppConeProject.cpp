@@ -312,7 +312,6 @@ static double cone_project_single(const vec& Z, const mat& W, double LR_full,
   data.tup4 = &tup4;
 
   vec zero_par(n_par, fill::zeros);
-  vec xbest_tmp(n_par);
 
   // Cone 1: multi-start NM + restart from best
   data.cone_id = 1;
@@ -371,7 +370,11 @@ arma::mat cppConeProjectBatch(arma::mat u,
     int idx1 = idx0 + n_lam - 1;
 
     mat I_jj = I_lam_eta.submat(idx0, idx0, idx1, idx1);
-    mat I_jj_inv = inv_sympd(I_jj);
+    mat I_jj_inv;
+    bool ok = inv_sympd(I_jj_inv, I_jj);
+    if (!ok || !I_jj_inv.is_finite()) {
+      I_jj_inv = pinv(I_jj);
+    }
     mat u_jj = u.cols(idx0, idx1);
     mat Z_jj = u_jj * I_jj_inv;
 
@@ -381,7 +384,7 @@ arma::mat cppConeProjectBatch(arma::mat u,
     // Cholesky for LR_full computation (not strictly needed; use W directly)
     for (int rr = 0; rr < nrep; rr++) {
       vec Z_r = Z_jj.row(rr).t();
-      double LR_full = dot(Z_r, W * Z_r);
+      double LR_full = dot(u_jj.row(rr), Z_jj.row(rr));
 
       EM(rr, jj) = cone_project_single(Z_r, W, LR_full,
                                         d, dsig, d_muv, d_mu4,

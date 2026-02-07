@@ -4,8 +4,16 @@
 \alias{mvnmixPMLE}
 \title{mvnmixPMLE}
 \usage{
-mvnmixPMLE(y, m = 2, ninits = 100, epsilon = 1e-08, maxit = 2000,
-  epsilon.short = 0.01, maxit.short = 500, binit = NULL)
+mvnmixPMLE(
+  y,
+  m = 2,
+  ninits = 100,
+  epsilon = 1e-08,
+  maxit = 2000,
+  epsilon.short = 0.01,
+  maxit.short = 500,
+  binit = NULL
+)
 }
 \arguments{
 \item{y}{n by d matrix of data}
@@ -25,23 +33,15 @@ mvnmixPMLE(y, m = 2, ninits = 100, epsilon = 1e-08, maxit = 2000,
 \item{binit}{The initial value of parameter vector that is included as a candidate parameter vector}
 }
 \value{
-A list of class \code{mvnmix} with items:
-\item{coefficients}{A vector of parameter estimates. Ordered as \eqn{\alpha_1,\ldots,\alpha_m,\mu_1,\ldots,\mu_m,\sigma_1,\ldots,\sigma_m}.}
-\item{parlist}{The parameter estimates as a list containing alpha, mu, and sigma.}
-\item{vcov}{The estimated variance-covariance matrix.}
-\item{loglik}{The maximized value of the log-likelihood.}
-\item{penloglik}{The maximized value of the penalized log-likelihood.}
-\item{aic}{Akaike Information Criterion of the fitted model.}
-\item{bic}{Bayesian Information Criterion of the fitted model.}
-\item{postprobs}{n by m matrix of posterior probabilities for observations}
-\item{components}{n by 1 vector of integers that indicates the indices of components
-each observation belongs to based on computed posterior probabilities}
-\item{call}{The matched call.}
-\item{m}{The number of components in the mixture.}
+A list containing estimated \code{coefficients}, \code{parlist}, \code{loglik},
+\code{penloglik}, \code{aic}, \code{bic}, \code{postprobs}, \code{call}, and \code{m}.
 }
 \description{
-Estimates parameters of a finite mixture of multivariate normals by
-penalized maximum log-likelhood functions.
+Estimates parameters of a finite mixture of multivariate normals
+by penalized maximum log-likelhood functions.
+}
+\details{
+Estimate PMLE for Multivariate Normal Mixtures
 }
 \note{
 \code{mvnmixPMLE} maximizes the penalized log-likelihood function
@@ -70,5 +70,5 @@ Chen, J. and Tan, X. (2009)
 Inference for Multivariate Normal Mixtures,
 \emph{Journal of Multivariate Analysis}, \bold{100}, 1367--1383.
 
-McLachlan, G. J. and Peel, D. (2000) \emph{Finite Mixture Models}, John Wiley \& Sons, Inc.
+McLachlan, G. J. and Peel, D. (2000) \emph{Finite Mixture Models}, John Wiley and Sons, Inc.
 }

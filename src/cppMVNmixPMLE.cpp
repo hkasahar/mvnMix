@@ -2,7 +2,34 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
 
-// const double SINGULAR_EPS = 10e-10; // criteria for matrix singularity
+namespace {
+
+constexpr double kDetTol = 1e-12;
+constexpr double kAlphaTol = 1e-8;
+constexpr double kWeightTol = 1e-12;
+
+inline void vech_to_sym(const arma::vec& src, int offset, int d, arma::mat& out) {
+  out.zeros();
+  int idx = offset;
+  for (int col = 0; col < d; ++col) {
+    for (int row = col; row < d; ++row) {
+      out(row, col) = src(idx++);
+    }
+  }
+  out = arma::symmatl(out);
+}
+
+inline void sym_to_vech(const arma::mat& src, arma::vec& out, int offset) {
+  int idx = offset;
+  int d = src.n_rows;
+  for (int col = 0; col < d; ++col) {
+    for (int row = col; row < d; ++row) {
+      out(idx++) = src(row, col);
+    }
+  }
+}
+
+} // namespace
 
 // [[Rcpp::export]]
 List cppMVNmixPMLE(NumericMatrix bs,
@@ -17,214 +44,272 @@ List cppMVNmixPMLE(NumericMatrix bs,
                    double tau = 0.5,
                    int h = 0,
                    int k = 0) {
-  int n = ys.nrow();
-  int d = ys.ncol();
-  int dsig = d*(d+1)/2;
+  const int n = ys.nrow();
+  const int d = ys.ncol();
+  const int dsig = d * (d + 1) / 2;
+
+  if (n <= 1 || d <= 0) {
+    stop("ys must have at least two rows and one column.");
+  }
+  if (m <= 0) {
+    stop("m must be positive.");
+  }
+  if (ninits <= 0) {
+    stop("ninits must be positive.");
+  }
+  if (bs.ncol() < ninits) {
+    stop("bs must have at least ninits columns.");
+  }
+  if (bs.nrow() != m + m * d + m * dsig) {
+    stop("bs has incompatible row dimension.");
+  }
+  if (sigma0s.size() != m * dsig) {
+    stop("sigma0s has incompatible length.");
+  }
+  if (k > 0 && (h < 1 || h > m)) {
+    stop("h must be in {1, ..., m} when k > 0.");
+  }
+  if (k == 1 && mu0s.size() < (m + 1)) {
+    stop("mu0s must have length at least m + 1 when k == 1.");
+  }
+
   arma::mat b = Rcpp::as<arma::mat>(bs);
-  arma::mat y = Rcpp::as<arma::mat>(ys);
-  arma::mat sigmamat_j = arma::zeros(d, d);
-  arma::mat sigma_j_inv = arma::zeros(d, d);
-  arma::mat sigma0mat_j = arma::zeros(d, d);
-  arma::mat s0j(d, d), ssr_j(d, d);
-  arma::mat sigmamat = arma::zeros(d, m*d);
-  arma::mat sigma0mat = arma::zeros(d, m*d);
+  const arma::mat y = Rcpp::as<arma::mat>(ys);
   arma::vec mu0 = Rcpp::as<arma::vec>(mu0s);
   arma::vec sigma0 = Rcpp::as<arma::vec>(sigma0s);
-  arma::vec b_jn(bs.nrow());
-  arma::vec lb(m),ub(m);
-  arma::vec alpha(m), mu(m*d), sigma(m*dsig), alp_sig(m);
-  arma::vec detsigma(m), pen(m);
-  arma::mat l_m(n,m);
-  arma::mat r(n,m);
-  arma::vec minr(n), sum_l_m(n);
-  arma::mat w(n,m);
-  arma::mat post(m*n,ninits);
-  arma::vec notcg = arma::zeros(ninits);
-  arma::vec penloglikset(ninits), loglikset(ninits);
-  arma::mat ydot(n,d);
-  arma::mat rtilde(n,d);
-  arma::vec mu_j(d);
-  arma::vec wtilde(n);
-  arma::mat ytilde(d,n);
-  int sing;
-  double oldpenloglik, w_j, diff, alphah, tauhat;
-  // double  ;
-  double ll = 0; // force initilization
-  double penloglik = 0; // force initialization
 
-  /* Lower and upper bound for the first elemetn of mu */
-  if (k==1) {  // If k==1, compute upper and lower bounds
+  arma::cube sigma0_cube(d, d, m, arma::fill::zeros);
+  arma::cube sigma_cube(d, d, m, arma::fill::zeros);
+
+  arma::vec lb(m, arma::fill::zeros), ub(m, arma::fill::zeros);
+  if (k == 1) {
     mu0(0) = R_NegInf;
     mu0(m) = R_PosInf;
-    for (int j=0; j<h; j++) {
-      lb(j) = (mu0(j)+mu0(j+1))/2.0;
-      ub(j) = (mu0(j+1)+mu0(j+2))/2.0;
+    for (int j = 0; j < h; ++j) {
+      lb(j) = (mu0(j) + mu0(j + 1)) / 2.0;
+      ub(j) = (mu0(j + 1) + mu0(j + 2)) / 2.0;
     }
-    for (int j=h; j<m; j++) {
-      lb(j) = (mu0(j-1)+mu0(j))/2.0;
-      ub(j) = (mu0(j)+mu0(j+1))/2.0;
+    for (int j = h; j < m; ++j) {
+      lb(j) = (mu0(j - 1) + mu0(j)) / 2.0;
+      ub(j) = (mu0(j) + mu0(j + 1)) / 2.0;
     }
   }
 
-  /* iteration over ninits initial values of b */
-  for (int jn=0; jn<ninits; jn++) {
+  for (int j = 0; j < m; ++j) {
+    arma::mat sigma0_j(d, d, arma::fill::zeros);
+    vech_to_sym(sigma0, j * dsig, d, sigma0_j);
+    sigma0_cube.slice(j) = sigma0_j;
+  }
 
-    /* initialize EM iteration */
+  arma::mat post(m * n, ninits, arma::fill::zeros);
+  arma::vec notcg(ninits, arma::fill::zeros);
+  arma::vec penloglikset(ninits, arma::fill::value(R_NegInf));
+  arma::vec loglikset(ninits, arma::fill::value(R_NegInf));
+
+  arma::vec b_jn(bs.nrow());
+  arma::vec alpha(m), mu(m * d), sigma(m * dsig), alp_sig(m);
+  arma::vec logdetsigma(m), pen(m);
+  arma::mat l_m(n, m, arma::fill::zeros);
+  arma::mat r(n, m, arma::fill::zeros);
+  arma::vec minr(n, arma::fill::zeros), sum_l_m(n, arma::fill::zeros);
+  arma::mat w(n, m, arma::fill::zeros);
+  arma::vec mu_j(d), wcol(n);
+  arma::mat ydot(n, d), ssr_j(d, d), sigma_j_inv(d, d), s0j(d, d);
+
+  double ll = R_NegInf;
+  double penloglik = R_NegInf;
+
+  for (int jn = 0; jn < ninits; ++jn) {
     b_jn = b.col(jn);
-    alpha = b_jn.subvec(0,m-1);
-    mu = b_jn.subvec(m,m+m*d-1);
-    sigma = b_jn.subvec(m+m*d,m+m*d+m*dsig-1);
-    int dum=0;
-    for (int j=0; j < m; ++j){
-      for (int ii=0; ii<d; ++ii){
-        for (int jj=ii; jj<d; ++jj){
-          sigmamat_j(jj,ii) = sigma(dum);
-          sigma0mat_j(jj,ii) = sigma0(dum);
-          dum++;
-        }
-      }
-      sigmamat_j = symmatl(sigmamat_j);
-      sigma0mat_j = symmatl(sigma0mat_j);
-      sigmamat.cols(j*d,(j+1)*d-1) = sigmamat_j;
-      sigma0mat.cols(j*d,(j+1)*d-1) = sigma0mat_j;
+    alpha = b_jn.subvec(0, m - 1);
+    mu = b_jn.subvec(m, m + m * d - 1);
+    sigma = b_jn.subvec(m + m * d, m + m * d + m * dsig - 1);
+
+    for (int j = 0; j < m; ++j) {
+      arma::mat sigma_j(d, d, arma::fill::zeros);
+      vech_to_sym(sigma, j * dsig, d, sigma_j);
+      sigma_cube.slice(j) = sigma_j;
     }
-    oldpenloglik = R_NegInf;
-    diff = 1.0;
-    sing = 0;
 
-// sigmamat.print();
-// mu.print();
+    double oldpenloglik = R_NegInf;
+    ll = R_NegInf;
+    penloglik = R_NegInf;
+    w.zeros();
 
-    /* EM loop begins */
-    for (int iter = 0; iter < maxit; iter++) {
-      /* standardized squared residual */
-      for (int j=0; j < m; j++) {
-        mu_j = mu.subvec(j*d,(j+1)*d-1);
+    bool singular = false;
+
+    for (int iter = 0; iter < maxit; ++iter) {
+      for (int j = 0; j < m; ++j) {
+        mu_j = mu.subvec(j * d, (j + 1) * d - 1);
         ydot = y.each_row() - mu_j.t();
-        detsigma(j) = det(sigmamat.cols(j*d,(j+1)*d-1));
-        // if ( detsigma(j) < 1e-8 || isnan(detsigma(j)) ) {
-        if ( detsigma(j) < arma::datum::eps || isnan(detsigma(j)) ) {
-            sigma_j_inv = arma::eye(d,d);
-        } else {
-          // sigma_j_inv = solve(sigmamat.cols(j*d,(j+1)*d-1), arma::eye(d,d));
-          sigma_j_inv = inv_sympd(sigmamat.cols(j*d,(j+1)*d-1));
+
+        const arma::mat& sigma_j = sigma_cube.slice(j);
+        bool inv_ok = arma::inv_sympd(sigma_j_inv, sigma_j);
+        if (!inv_ok || !sigma_j_inv.is_finite()) {
+          singular = true;
+          break;
         }
-        rtilde = 0.5*(ydot * sigma_j_inv) % ydot;
-        // ytilde = solve(sigmamat.cols(j*d,(j+1)*d-1), ydot.t());
-        // rtilde = 0.5* ytilde.t() % ydot;
-        r.col(j) = sum(rtilde,1);
-        s0j = sigma0mat.cols(j*d,(j+1)*d-1) * sigma_j_inv;
-        // s0j = solve(sigmamat.cols(j*d,(j+1)*d-1), sigma0mat.cols(j*d,(j+1)*d-1)).t();
-        pen(j) = trace(s0j) - log(det(s0j)) -d;
+
+        double logdet_j = 0.0;
+        double sign_j = 1.0;
+        arma::log_det(logdet_j, sign_j, sigma_j);
+        if (sign_j <= 0 || !std::isfinite(logdet_j) || logdet_j < std::log(kDetTol)) {
+          singular = true;
+          break;
+        }
+
+        logdetsigma(j) = logdet_j;
+
+        arma::mat rtilde = 0.5 * (ydot * sigma_j_inv) % ydot;
+        r.col(j) = arma::sum(rtilde, 1);
+
+        s0j = sigma0_cube.slice(j) * sigma_j_inv;
+        double logdet_s0j = 0.0;
+        double sign_s0j = 1.0;
+        arma::log_det(logdet_s0j, sign_s0j, s0j);
+        if (sign_s0j <= 0 || !std::isfinite(logdet_s0j)) {
+          singular = true;
+          break;
+        }
+
+        pen(j) = arma::trace(s0j) - logdet_s0j - d;
       }
-      // if ( detsigma.has_nan() || sigmamat.has_nan() ) {
-      if ( any(detsigma < arma::datum::eps) || detsigma.has_nan() || sigmamat.has_nan() ) {
+
+      if (singular) {
         penloglik = R_NegInf;
+        ll = R_NegInf;
         break;
       }
-      alp_sig = alpha / sqrt(detsigma);
-      minr = min(r,1);
-      /* posterior for i = 1,...,n */
-      /* normalizing with minr avoids the problem of dividing by zero */
-      l_m = exp(-(r.each_col() - minr));
+
+      alp_sig = alpha % arma::exp(-0.5 * logdetsigma);
+      if (!alp_sig.is_finite() || arma::any(alp_sig <= 0)) {
+        singular = true;
+        penloglik = R_NegInf;
+        ll = R_NegInf;
+        break;
+      }
+
+      minr = arma::min(r, 1);
+      l_m = arma::exp(-(r.each_col() - minr));
       l_m.each_row() %= alp_sig.t();
-      sum_l_m = sum(l_m,1);
-      w = l_m.each_col() / sum_l_m; /* w(j,i) = alp_j*l_j / sum_j (alp_j*l_j) */
-      /* loglikelihood*/
-      ll = sum(log(sum_l_m) - minr) - (double)n *d * M_LN_SQRT_2PI;
-      /* subtract back minr and subtract n/2 times log(2pi) */;
+      sum_l_m = arma::sum(l_m, 1);
 
-      /* Compute the penalized loglik. Note that penalized loglik uses old (not updated) sigma */
-      penloglik = ll + log(2.0) + fmin(log(tau),log(1-tau)) - an*sum(pen);
+      if (!sum_l_m.is_finite() || arma::any(sum_l_m <= kWeightTol)) {
+        singular = true;
+        penloglik = R_NegInf;
+        ll = R_NegInf;
+        break;
+      }
 
-      diff = penloglik - oldpenloglik;
+      w = l_m.each_col() / sum_l_m;
+
+      ll = arma::sum(arma::log(sum_l_m) - minr) - static_cast<double>(n) * d * M_LN_SQRT_2PI;
+      penloglik = ll + std::log(2.0) + std::fmin(std::log(tau), std::log(1.0 - tau)) - an * arma::sum(pen);
+
+      double diff = penloglik - oldpenloglik;
       oldpenloglik = penloglik;
 
-      /* Normal exit */
-      if (diff < tol ){
+      if (diff < tol) {
         break;
       }
 
-      /* update alpha, mu, and sigma */
-      dum=0;
-      for (int j = 0; j < m; j++) {
-        w_j = sum( w.col(j) ); /* w_j = sum_i w(i,j) */
+      for (int j = 0; j < m; ++j) {
+        wcol = w.col(j);
+        double w_j = arma::accu(wcol);
+        if (!std::isfinite(w_j) || w_j <= kWeightTol) {
+          singular = true;
+          break;
+        }
+
         alpha(j) = w_j / n;
-        mu_j = trans(sum((y.each_col() % w.col(j)), 0)) / w_j;
-        ydot =  y.each_row() - mu_j.t();
-        ssr_j = trans((ydot.each_col() % w.col(j))) * ydot;
-        sigmamat_j = (2*an*sigma0mat.cols(j*d,(j+1)*d-1) + ssr_j)/ (2*an + w_j);
-  //       sigma(j) = fmax(sigma(j),0.01*sigma0(j));
-        /* If k ==1, impose lower and upper bound on the first element of mu_j */
-        if (k==1) {
-          mu_j(0) = fmin( fmax(mu_j(0),lb(j)), ub(j));
+
+        mu_j = (y.t() * wcol) / w_j;
+        if (k == 1) {
+          mu_j(0) = std::fmin(std::fmax(mu_j(0), lb(j)), ub(j));
         }
-        mu.subvec(j*d,(j+1)*d-1) = mu_j;
-        detsigma(j) = det(sigmamat_j);
-        sigmamat.cols(j*d,(j+1)*d-1) = sigmamat_j;
-        for (int ii=0; ii<d; ++ii){
-          for (int jj=ii; jj<d; ++jj){
-            sigma(dum) = sigmamat_j(jj,ii);
-            dum++;
-          }
-        }
-      // alpha.print();
-      // mu.print();
-      // sigmamat.print();
-        // sigmamat_j.print();
-        // sigma.print();
+        mu.subvec(j * d, (j + 1) * d - 1) = mu_j;
+
+        ydot = y.each_row() - mu_j.t();
+        ssr_j = (ydot.each_col() % wcol).t() * ydot;
+
+        arma::mat sigma_j = (2.0 * an * sigma0_cube.slice(j) + ssr_j) / (2.0 * an + w_j);
+        sigma_cube.slice(j) = sigma_j;
       }
 
-      /* for PMLE, we set k=0 (default value) */
-      /* for EM test, we start from k=1       */
-      /*   if k==1, we don't update tau       */
-      /*   if k>1, we update tau              */
-      if (k==1){
-        alphah = (alpha(h-1)+alpha(h));
-        alpha(h-1) = alphah*tau;
-        alpha(h) = alphah*(1-tau);
-      } else if (k>1) {
-        alphah = (alpha(h-1)+alpha(h));
-        tauhat = alpha(h-1)/(alpha(h-1)+alpha(h));
-        if(tauhat <= 0.5) {
-            tau = fmin((alpha(h-1)*n + 1.0)/(alpha(h-1)*n + alpha(h)*n + 1.0), 0.5);
-        } else {
-            tau = fmax(alpha(h-1)*n /(alpha(h-1)*n + alpha(h)*n + 1.0), 0.5);
-        }
-        alpha(h-1) = alphah*tau;
-        alpha(h) = alphah*(1-tau);
-      }
-
-    /* Check singularity */
-      // if (any(alpha < 1e-8) || alpha.has_nan() ) {
-      if (any(alpha < 1e-8) || alpha.has_nan() || any(detsigma < arma::datum::eps)) {
-        sing = 1;
-      }
-
-      /* Exit from the loop if singular */
-      if (sing) {
-        notcg(jn) = 1;
+      if (singular) {
+        penloglik = R_NegInf;
+        ll = R_NegInf;
         break;
       }
 
-    } /* EM loop ends */
+      if (k == 1) {
+        double alphah = alpha(h - 1) + alpha(h);
+        alpha(h - 1) = alphah * tau;
+        alpha(h) = alphah * (1.0 - tau);
+      } else if (k > 1) {
+        double alphah = alpha(h - 1) + alpha(h);
+        double tauhat = alpha(h - 1) / alphah;
+        if (tauhat <= 0.5) {
+          tau = std::fmin((alpha(h - 1) * n + 1.0) / (alpha(h - 1) * n + alpha(h) * n + 1.0), 0.5);
+        } else {
+          tau = std::fmax(alpha(h - 1) * n / (alpha(h - 1) * n + alpha(h) * n + 1.0), 0.5);
+        }
+        alpha(h - 1) = alphah * tau;
+        alpha(h) = alphah * (1.0 - tau);
+      }
+
+      if (!alpha.is_finite() || arma::any(alpha < kAlphaTol)) {
+        singular = true;
+        penloglik = R_NegInf;
+        ll = R_NegInf;
+        break;
+      }
+
+      for (int j = 0; j < m; ++j) {
+        double logdet_j = 0.0;
+        double sign_j = 1.0;
+        arma::log_det(logdet_j, sign_j, sigma_cube.slice(j));
+        if (sign_j <= 0 || !std::isfinite(logdet_j) || logdet_j < std::log(kDetTol)) {
+          singular = true;
+          penloglik = R_NegInf;
+          ll = R_NegInf;
+          break;
+        }
+      }
+
+      if (singular) {
+        break;
+      }
+
+      for (int j = 0; j < m; ++j) {
+        sym_to_vech(sigma_cube.slice(j), sigma, j * dsig);
+      }
+    }
+
+    if (singular) {
+      notcg(jn) = 1;
+    }
 
     penloglikset(jn) = penloglik;
     loglikset(jn) = ll;
-    /* update b_jn */
-    b_jn.subvec(0,m-1) = alpha;
-    b_jn.subvec(m,m+m*d-1) = mu;
-    b_jn.subvec(m+m*d,m+m*d+m*dsig-1) = sigma;
-    /* update b */
+
+    for (int j = 0; j < m; ++j) {
+      sym_to_vech(sigma_cube.slice(j), sigma, j * dsig);
+    }
+
+    b_jn.subvec(0, m - 1) = alpha;
+    b_jn.subvec(m, m + m * d - 1) = mu;
+    b_jn.subvec(m + m * d, m + m * d + m * dsig - 1) = sigma;
     b.col(jn) = b_jn;
 
-    post.col(jn) = vectorise(w);
+    post.col(jn) = arma::vectorise(w);
+  }
 
-  } /* end for (jn=0; jn<ninits; jn++) loop */
-
-  return Rcpp::List::create(Named("penloglikset") = wrap(penloglikset),
-                            Named("loglikset") = wrap(loglikset),
-                            Named("notcg") = wrap(notcg),
-                            Named("post") = wrap(post),
-                            Named("b") = wrap(b));
+  return List::create(
+    Named("penloglikset") = wrap(penloglikset),
+    Named("loglikset") = wrap(loglikset),
+    Named("notcg") = wrap(notcg),
+    Named("post") = wrap(post),
+    Named("b") = wrap(b)
+  );
 }

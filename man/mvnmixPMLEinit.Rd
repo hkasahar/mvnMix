@@ -14,11 +14,12 @@ mvnmixPMLEinit(y, ninits = 1, m = 2)
 \item{m}{The number of components in the mixture}
 }
 \value{
-A list with the following items:
-\item{alpha}{m by ninits matrix for alpha}
-\item{mu}{d*m by ninits matrix for mu, each column is (mu_1',...,mu_m')'}
-\item{sigma}{d(d+1)/2*m by ninits matrix for sigma, each column is (vech(sigma_1)',...,vech(sigma_m)')'}
+A list with elements \code{alpha}, \code{mu}, and \code{sigma}.
 }
 \description{
-Generate initial values used by the PMLE of multivariate normal mixture
+Generate initial values used by PMLE of multivariate normal
+mixtures.
+}
+\details{
+Generate Initial Values for PMLE
 }

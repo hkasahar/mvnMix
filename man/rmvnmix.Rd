@@ -7,17 +7,21 @@
 rmvnmix(n, alpha, mu, sigma)
 }
 \arguments{
-\item{n}{The number of observations}
+\item{n}{Number of observations.}
 
-\item{alpha}{m by 1 vector that represents proportions of components}
+\item{alpha}{Length-\eqn{m} vector of component probabilities.}
 
-\item{mu}{d by m matrix that represents mu}
+\item{mu}{\eqn{d \times m} matrix whose \eqn{j}-th column is component mean.}
 
-\item{sigma}{d by d*m matrix that represents variance of components}
+\item{sigma}{\eqn{d \times (d m)} block matrix of component covariance matrices.}
 }
 \value{
-n by d vector
+An \eqn{n \times d} matrix of random draws.
 }
 \description{
-Generates multivariate mixed normal random variables
+Draw random observations from a finite mixture of multivariate
+normal components.
+}
+\details{
+Generate Random Draws from a Multivariate Normal Mixture
 }

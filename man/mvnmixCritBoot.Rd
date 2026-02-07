@@ -4,31 +4,44 @@
 \alias{mvnmixCritBoot}
 \title{mvnmixCritBoot}
 \usage{
-mvnmixCritBoot(y, parlist, values = NULL, ninits = 10, nbtsp = 199,
-  parallel = 0, cl = NULL, LRT.penalized = FALSE)
+mvnmixCritBoot(
+  y,
+  an = 1,
+  parlist,
+  values = NULL,
+  ninits = 10,
+  nbtsp = 199,
+  parallel = 0.75,
+  cl = NULL,
+  LRT.penalized = FALSE
+)
 }
 \arguments{
 \item{y}{n by d matrix of data}
 
-\item{parlist}{The parameter estimates as a list containing alpha, mu, and sigma
-in the form of (alpha = (alpha_1,...,alpha_m), mu = (mu_1',...,mu_m'),
-sigma = (vech(sigma_1)',...,vech(sigma_m)')}
+\item{an}{Penalty-weight parameter used in PMLE updates.}
 
-\item{values}{3 by 1 Vector of length 3 (k = 1, 2, 3) at which the p-values are computed}
+\item{parlist}{Parameter list with \code{alpha}, \code{mu}, and \code{sigma}.}
 
-\item{ninits}{The number of initial candidates to be generated}
+\item{values}{Optional vector of observed statistics for p-value calculation.}
 
-\item{nbtsp}{The number of bootstrap observations; by default, it is set to be 199.}
+\item{ninits}{The number of initial candidates to be generated.}
 
-\item{parallel}{Determines what percentage of available cores are used, represented by a double in [0,1]. 0.75 is default.}
+\item{nbtsp}{The number of bootstrap observations.}
 
-\item{cl}{Cluster used for parallelization (optional)}
+\item{parallel}{Determines what percentage of available cores are used.}
+
+\item{cl}{Cluster used for parallelization (optional).}
+
+\item{LRT.penalized}{Whether penalized log-likelihood is used in bootstrap
+test-statistic updates.}
 }
 \value{
-A list with the following items:
-\item{crit}{3 by 3 matrix of (0.1, 0.05, 0.01 critical values), jth row corresponding to k=j}
-\item{pvals}{A vector of p-values at k = 1, 2, 3}
+A list with elements \code{crit} and \code{pvals}.
 }
 \description{
-Computes the bootstrap critical values of the modified EM test.
+Computes bootstrap critical values for the modified EM test.
+}
+\details{
+Compute Bootstrap Critical Values for MEM Test
 }
